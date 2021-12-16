@@ -3,82 +3,81 @@ require 'dotenv/load'
 
 module SlackWrapper
   class Channel
-    def initialize(token = nil, channel:)
-      @channel = channel
+    attr_reader :identifier
+
+    def initialize(identifier:, token: nil)
+      @identifier = identifier
       @token = token
     end
 
-    def post_a_message!(text)
+    def post_a_message!(text:)
       slack_client.chat_postMessage(
-        channel: @channel,
-        text: text,
+        channel: identifier,
+        text: text
       )
     end
 
-    def post_a_scheduled_message!(text, time)
+    def post_a_scheduled_message!(text:, time:)
       slack_client.chat_scheduleMessage(
-        channel: @channel,
+        channel: identifier,
         text: text,
         post_at: time
       )
     end
 
-    def pin_a_message!(message_timestamp)
+    def pin_a_message!(message_timestamp:)
       slack_client.pins_add(
-        channel: @channel,
-        timestamp: message_timestamp,
+        channel: identifier,
+        timestamp: message_timestamp
       )
     end
 
-    def current_channel_topic
+    def current_topic
       slack_client.conversations_info(
-        channel: @channel,
+        channel: identifier
       ).dig(:channel, :topic, :value)
     end
 
     def current_members
       slack_client.conversations_members(
-        channel: @channel,
+        channel: identifier
       ).members
     end
 
-    def create_public_channel!(channel_name)
+    def self.create(is_private:, channel_name:)
       slack_client.conversations_create(
         name: channel_name,
-        is_private: false,
+        is_private: is_private
       )
     end
 
-    def create_private_channel!(channel_name)
-      slack_client.conversations_create(
-        name: channel_name,
-        is_private: true,
-      )
-    end
-
-    def invite_users!(users)
+    def invite_users!(users:)
       slack_client.conversations_invite(
-        channel: @channel,
-        users: users.join(','),
+        channel: identifier,
+        users: users.join(',')
       )
     end
 
-    def invite_user!(user)
+    def invite_user!(user:)
       slack_client.conversations_invite(
-        channel: @channel,
-        users: user,
+        channel: identifier,
+        users: user
       )
     end
 
-    def create_channel_topic!(summary)
+    def create_topic!(summary:)
       slack_client.conversations_setTopic(
-        channel: @channel,
-        topic: summary,
+        channel: identifier,
+        topic: summary
       )
+    end
+
+    def self.slack_client
+      Slack::Web::Client.new(token: @token || ENV['SLACK_TOKEN'])
     end
 
     def slack_client
-      @token || Slack::Web::Client.new(token: ENV['SLACK_TOKEN'])
+      @slack_client ||= self.class.slack_client
     end
   end
 end
